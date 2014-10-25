@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <pthread.h>
+#include <omp.h>
 
 using namespace std;
 long long number_of_tosses, number_in_circle;
@@ -20,15 +21,21 @@ void* threadSum(void* tid) {
     long long my_toss = part_toss;
     long my_tid = (long) tid;
     if (my_tid == NUMBER_OF_THREAD-1) my_toss = number_of_tosses - part_toss*(NUMBER_OF_THREAD-1);
+
     long long my_number_in_circle = 0;
-    for (long long toss = 0; toss < my_toss; ++toss) {
-        double x = fRand(-1, 1);
-        double y = fRand(-1, 1);
+    unsigned int my_seed = omp_get_thread_num();
+
+#pragma omp parallel for
+{
+    for (long long i = 0; i < my_toss; ++i) {
+        double x = -1 + (double)rand_r(&my_seed) / RAND_MAX * 2;
+        double y = -1 + (double)rand_r(&my_seed) / RAND_MAX * 2;
         double distance_squared = x*x + y*y;
         if (distance_squared <= 1) {
             ++my_number_in_circle;
         }
     }
+}
     /* add local to global */
     pthread_mutex_lock(&mutex);
     number_in_circle += my_number_in_circle;
@@ -62,13 +69,12 @@ int main (int argc, char* argv[]) {
     number_in_circle = 0;
 
     /* create thread */
-    long i;
-    for (i = 0; i < NUMBER_OF_THREAD; ++i) {
+    for (long i = 0; i < NUMBER_OF_THREAD; ++i) {
         pthread_create(&thread_handles[i], NULL, threadSum, (void*)i);
     }
 
     /* join threads */
-    for (i = 0; i < NUMBER_OF_THREAD; ++i) {
+    for (long i = 0; i < NUMBER_OF_THREAD; ++i) {
         pthread_join(thread_handles[i], NULL);
     }
     
