@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -7,22 +6,15 @@
 
 using namespace std;
 long long number_of_tosses, number_in_circle;
-long long part_toss;
 pthread_mutex_t mutex;
 
 int NUMBER_OF_THREAD = 1;
 
-inline double fRand(double fMin, double fMax) {
-    double f = (double)rand()/ RAND_MAX;
-    return fMin + f * (fMax - fMin);
-}
-
-void* threadSum(void* tid) {
-    long long my_toss = part_toss;
-    long my_tid = (long) tid;
-    if (my_tid == NUMBER_OF_THREAD-1) my_toss = number_of_tosses - part_toss*(NUMBER_OF_THREAD-1);
-
+void* threadSum(void* toss) {
+    long long my_toss = (long long)toss;
     long long my_number_in_circle = 0;
+
+    /* generate seed */
     unsigned int my_seed = omp_get_thread_num();
 
 #pragma omp parallel for
@@ -41,6 +33,7 @@ void* threadSum(void* tid) {
     number_in_circle += my_number_in_circle;
     pthread_mutex_unlock(&mutex);
 
+    /* exit */
     pthread_exit(NULL);
 }
 
@@ -57,8 +50,8 @@ int main (int argc, char* argv[]) {
     srand(time(NULL));
 
     /* total toss number */
-    number_of_tosses = atoll(argv[1]);
-    part_toss = number_of_tosses/NUMBER_OF_THREAD;
+    long long number_of_tosses = atoll(argv[1]);
+    long long part_toss = number_of_tosses/NUMBER_OF_THREAD;
     /* init of thread's id */
     pthread_t* thread_handles;
     thread_handles = (pthread_t*) malloc (NUMBER_OF_THREAD * sizeof(pthread_t));
@@ -69,9 +62,12 @@ int main (int argc, char* argv[]) {
     number_in_circle = 0;
 
     /* create thread */
-    for (long i = 0; i < NUMBER_OF_THREAD; ++i) {
-        pthread_create(&thread_handles[i], NULL, threadSum, (void*)i);
+    for (long i = 0; i < NUMBER_OF_THREAD-1; ++i) {
+        pthread_create(&thread_handles[i], NULL, threadSum, (void*)part_toss);
     }
+    /* last one may not be part_toss */
+    part_toss = number_of_tosses - part_toss*(NUMBER_OF_THREAD-1);
+    pthread_create(&thread_handles[NUMBER_OF_THREAD-1], NULL, threadSum, (void*)part_toss);
 
     /* join threads */
     for (long i = 0; i < NUMBER_OF_THREAD; ++i) {
