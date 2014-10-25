@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <pthread.h>
-#include <omp.h>
 
 using namespace std;
 long long number_of_tosses, number_in_circle;
@@ -15,10 +14,9 @@ void* threadSum(void* toss) {
     long long my_number_in_circle = 0;
 
     /* generate seed */
-    unsigned int my_seed = omp_get_thread_num();
+    unsigned int my_seed = rand();
 
-#pragma omp parallel for
-{
+    /* calculate */
     for (long long i = 0; i < my_toss; ++i) {
         double x = -1 + (double)rand_r(&my_seed) / RAND_MAX * 2;
         double y = -1 + (double)rand_r(&my_seed) / RAND_MAX * 2;
@@ -27,7 +25,6 @@ void* threadSum(void* toss) {
             ++my_number_in_circle;
         }
     }
-}
     /* add local to global */
     pthread_mutex_lock(&mutex);
     number_in_circle += my_number_in_circle;
