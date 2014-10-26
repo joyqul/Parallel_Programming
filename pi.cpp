@@ -7,7 +7,7 @@ using namespace std;
 long long number_of_tosses, number_in_circle;
 pthread_mutex_t mutex;
 
-int NUMBER_OF_THREAD = 1;
+int NUMBER_OF_THREAD = 8;
 
 void* threadSum(void* toss) {
     long long my_toss = (long long)toss;
