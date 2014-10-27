@@ -2,12 +2,11 @@
 #include <cstdlib>
 #include <ctime>
 #include <pthread.h>
+#include <sys/sysinfo.h>
 
 using namespace std;
 long long number_of_tosses, number_in_circle;
 pthread_mutex_t mutex;
-
-int NUMBER_OF_THREAD = 8;
 
 void* threadSum(void* toss) {
     long long my_toss = (long long)toss;
@@ -35,14 +34,13 @@ void* threadSum(void* toss) {
 }
 
 int main (int argc, char* argv[]) {
-    if (argc != 2 && argc !=3) {
+    if (argc != 2) {
         printf("Usage: ./hw1_pthread <number of tosses>\n");
         return 0;
     }
 
-    if (argc == 3) {
-        NUMBER_OF_THREAD = atoi(argv[2]);
-    }
+    int NUMBER_OF_THREAD = get_nprocs_conf();
+    //printf("NUMBER_OF_THREAD: %d\n", NUMBER_OF_THREAD);
 
     srand(time(NULL));
 
