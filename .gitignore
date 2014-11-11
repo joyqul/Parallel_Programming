@@ -1,2 +1,5 @@
 *pdf
 hw1_pthread
+*swp
+hw2/bin/
+*.o
