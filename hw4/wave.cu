@@ -28,6 +28,8 @@ float values[MAXPOINTS+2], 	/* values at time t */
       newval[MAXPOINTS+2]; 	/* values at time (t+dt) */
 float *gvalues, *goldval, *gnewval;
 
+int grid, block;
+
 
 /**********************************************************************
  *	Checks input values from parameters
@@ -60,9 +62,8 @@ void check_param(void)
 
 __global__ void VecAdd(float* A, int n) {
     /* Calculate initial values based on sine curve */
-    for (int i = 1; i <= n; i++) {
-        A[i] = sin(2.0 * PI * ((float)i - 1.0) / (float)(n - 1));
-    } 
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    A[i] = sin(2.0 * PI * ((float)i - 1.0) / (float)(n - 1));
 }
 
 /**********************************************************************
@@ -71,7 +72,7 @@ __global__ void VecAdd(float* A, int n) {
 void init_line(void)
 {
     /* Calculate initial values based on sine curve */
-    VecAdd<<<1, 1>>>(gvalues, tpoints);
+    VecAdd<<<grid, block>>>(gvalues, tpoints);
     cudaThreadSynchronize();
 
     /* Initialize old values array */
@@ -83,18 +84,14 @@ void init_line(void)
 /**********************************************************************
  *      Calculate new values using wave equation
  *********************************************************************/
-__global__ void do_math(float* goldval, float* gvalues, float* gnewval, int n) {
-    float dtime, c, dx, tau, sqtau;
-    dtime = 0.3;
-    c = 1.0;
-    dx = 1.0;
-    tau = (c * dtime / dx);
-    sqtau = tau * tau;
+__global__ void do_math(float* goldval, float* gvalues, float* gnewval, int n, float sqtau, int step) {
 
-    gnewval[1] = 0.0;
-    gnewval[n] = 0.0;
-    for (int i = 1; i < n; i++) {
-        gnewval[i] = (2.0 * gvalues[i]) - goldval[i] + (sqtau *  (-2.0)*gvalues[i]);
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int k = 0; k < step; ++k) {
+        gnewval[i] = (2.0 * (1-sqtau) *gvalues[i]) - goldval[i];
+        /* Update old values with new values */
+        goldval[i] = gvalues[i];
+        gvalues[i] = gnewval[i];
     }
 }
 
@@ -103,17 +100,17 @@ __global__ void do_math(float* goldval, float* gvalues, float* gnewval, int n) {
  *********************************************************************/
 void update()
 {
-    /* Update values for each time step */
-    for (int i = 1; i<= nsteps; i++) {
-        /* Update points along line for this time step */
-        do_math<<<1, 1>>>(goldval,  gvalues,  gnewval, tpoints);
-        cudaThreadSynchronize();
+    float dtime, c, dx, tau, sqtau;
+    dtime = 0.3;
+    c = 1.0;
+    dx = 1.0;
+    tau = (c * dtime / dx);
+    sqtau = tau * tau;
 
-        /* Update old values with new values */
-        cudaMemcpy(goldval, gvalues, SIZE, cudaMemcpyDeviceToDevice);
-        cudaMemcpy(gvalues, gnewval, SIZE, cudaMemcpyDeviceToDevice);
-    }
-    printf("\n");
+    /* Update values for each time step */
+    /* Update points along line for this time step */
+    do_math<<<grid, block>>>(goldval,  gvalues,  gnewval, tpoints, sqtau, nsteps);
+    cudaThreadSynchronize();
 
     cudaMemcpy(values, gvalues, SIZE, cudaMemcpyDeviceToHost);
 }
@@ -144,6 +141,8 @@ int main(int argc, char *argv[])
     sscanf(argv[1], "%d", &tpoints);
     sscanf(argv[2], "%d", &nsteps);
     check_param();
+    grid = 20;
+    block = tpoints/20;
 
     // allocate GPU memory
     cudaMalloc((float**)&gvalues, SIZE);
