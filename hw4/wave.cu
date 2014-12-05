@@ -13,7 +13,7 @@
 #define MAXSTEPS 1000000
 #define MINPOINTS 20
 #define PI 3.14159265
-#define SIZE (MAXPOINTS+2)*sizeof(float)
+#define SIZE (MAXPOINTS+22)*sizeof(float)
 
 void check_param(void);
 void init_line(void);
@@ -23,9 +23,9 @@ void printfinal (void);
 int nsteps,                 	/* number of time steps */
     tpoints, 	     		/* total points along string */
     rcode;                  	/* generic return code */
-float values[MAXPOINTS+2], 	/* values at time t */
-      oldval[MAXPOINTS+2], 	/* values at time (t-dt) */
-      newval[MAXPOINTS+2]; 	/* values at time (t+dt) */
+float values[MAXPOINTS+22], 	/* values at time t */
+      oldval[MAXPOINTS+22], 	/* values at time (t-dt) */
+      newval[MAXPOINTS+22]; 	/* values at time (t+dt) */
 float *gvalues, *goldval, *gnewval;
 
 int grid, block;
@@ -141,6 +141,10 @@ int main(int argc, char *argv[])
     sscanf(argv[1], "%d", &tpoints);
     sscanf(argv[2], "%d", &nsteps);
     check_param();
+
+    // fill it up
+    int left = tpoints%20;
+    if (left) tpoints += (20 - left);
     grid = 20;
     block = tpoints/20;
 
@@ -153,6 +157,11 @@ int main(int argc, char *argv[])
     init_line();
     printf("Updating all points for all time steps...\n");
     update();
+
+    // resume tpoints
+    if (left) tpoints -= (20 - left);
+
+    // result
     printf("Printing final results...\n");
     printfinal();
     printf("\nDone.\n\n");
