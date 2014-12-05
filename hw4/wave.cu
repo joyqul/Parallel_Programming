@@ -72,28 +72,30 @@ void init_line(void)
 {
     /* Calculate initial values based on sine curve */
     VecAdd<<<1, 1>>>(gvalues, tpoints);
+    cudaThreadSynchronize();
 
     /* Initialize old values array */
     cudaMemcpy(goldval, gvalues, SIZE, cudaMemcpyDeviceToDevice);
-
-    cudaMemcpy(values, gvalues, SIZE, cudaMemcpyDeviceToHost);
-    cudaMemcpy(oldval, gvalues, SIZE, cudaMemcpyDeviceToHost);
-
+    //cudaMemcpy(values, gvalues, SIZE, cudaMemcpyDeviceToHost);
+    //cudaMemcpy(oldval, gvalues, SIZE, cudaMemcpyDeviceToHost);
 }
 
 /**********************************************************************
  *      Calculate new values using wave equation
  *********************************************************************/
-void do_math(int i)
-{
+__global__ void do_math(float* goldval, float* gvalues, float* gnewval, int n) {
     float dtime, c, dx, tau, sqtau;
-
     dtime = 0.3;
     c = 1.0;
     dx = 1.0;
     tau = (c * dtime / dx);
     sqtau = tau * tau;
-    newval[i] = (2.0 * values[i]) - oldval[i] + (sqtau *  (-2.0)*values[i]);
+
+    gnewval[1] = 0.0;
+    gnewval[n] = 0.0;
+    for (int i = 1; i < n; i++) {
+        gnewval[i] = (2.0 * gvalues[i]) - goldval[i] + (sqtau *  (-2.0)*gvalues[i]);
+    }
 }
 
 /**********************************************************************
@@ -101,25 +103,19 @@ void do_math(int i)
  *********************************************************************/
 void update()
 {
-    int i, j;
-
     /* Update values for each time step */
-    for (i = 1; i<= nsteps; i++) {
+    for (int i = 1; i<= nsteps; i++) {
         /* Update points along line for this time step */
-        for (j = 1; j <= tpoints; j++) {
-            /* global endpoints */
-            if ((j == 1) || (j  == tpoints))
-                newval[j] = 0.0;
-            else
-                do_math(j);
-        }
+        do_math<<<1, 1>>>(goldval,  gvalues,  gnewval, tpoints);
+        cudaThreadSynchronize();
 
         /* Update old values with new values */
-        for (j = 1; j <= tpoints; j++) {
-            oldval[j] = values[j];
-            values[j] = newval[j];
-        }
+        cudaMemcpy(goldval, gvalues, SIZE, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(gvalues, gnewval, SIZE, cudaMemcpyDeviceToDevice);
     }
+    printf("\n");
+
+    cudaMemcpy(values, gvalues, SIZE, cudaMemcpyDeviceToHost);
 }
 
 /**********************************************************************
