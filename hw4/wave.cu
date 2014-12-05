@@ -58,9 +58,11 @@ void check_param(void)
 
 }
 
-__global__ void VecAdd(float* A, float* B, int n) {
-    for(int i = 1; i <= n; ++i)
-        B[i] = A[i];
+__global__ void VecAdd(float* A, int n) {
+    /* Calculate initial values based on sine curve */
+    for (int i = 1; i <= n; i++) {
+        A[i] = sin(2.0 * PI * ((float)i - 1.0) / (float)(n - 1));
+    } 
 }
 
 /**********************************************************************
@@ -68,27 +70,15 @@ __global__ void VecAdd(float* A, float* B, int n) {
  *********************************************************************/
 void init_line(void)
 {
-    int i, j;
-    float x, fac, k, tmp;
-
     /* Calculate initial values based on sine curve */
-    fac = 2.0 * PI;
-    k = 0.0; 
-    tmp = tpoints - 1;
-    for (j = 1; j <= tpoints; j++) {
-        x = k/tmp;
-        values[j] = sin (fac * x);
-        k = k + 1.0;
-    } 
-
-    for (i = 1; i <= tpoints; i++)  {
-        oldval[i] = values[i];
-    }
+    VecAdd<<<1, 1>>>(gvalues, tpoints);
 
     /* Initialize old values array */
-    cudaMemcpy(gvalues, values, SIZE, cudaMemcpyHostToDevice);
-    VecAdd<<<1, 1>>>(gvalues, oldval, tpoints);
-    cudaMemcpy(oldval, goldval, SIZE, cudaMemcpyDeviceToHost);
+    cudaMemcpy(goldval, gvalues, SIZE, cudaMemcpyDeviceToDevice);
+
+    cudaMemcpy(values, gvalues, SIZE, cudaMemcpyDeviceToHost);
+    cudaMemcpy(oldval, gvalues, SIZE, cudaMemcpyDeviceToHost);
+
 }
 
 /**********************************************************************

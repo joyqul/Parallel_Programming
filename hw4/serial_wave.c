@@ -68,9 +68,10 @@ void init_line(void)
    k = 0.0; 
    tmp = tpoints - 1;
    for (j = 1; j <= tpoints; j++) {
-      x = k/tmp;
-      values[j] = sin (fac * x);
-      k = k + 1.0;
+      //x = k/tmp;
+      //values[j] = sin (fac * x);
+      //k = k + 1.0;
+      values[j] = sin(2.0 * PI * ((float)j - 1.0) / tmp);
    } 
 
    /* Initialize old values array */

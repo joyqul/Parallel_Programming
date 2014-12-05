@@ -13,5 +13,11 @@ echo '=====' >> result
 echo 'compare tcas2' >> result
 diff tcase.ans tcase.out >> result
 
+time ./cuda_wave_origin 10000 10000 > tcase.ans
+time ./cuda_wave 10000 10000 > tcase.out
+echo '=====' >> result
+echo 'compare tcas2' >> result
+diff tcase.ans tcase.out >> result
+
 echo '=====' >> result
 less result
