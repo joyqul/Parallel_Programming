@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include "scene.h"
+#include "calc.h"
 
 scene::scene() {
     Init();
@@ -130,4 +131,45 @@ void BALL::init() {
     r = 1.0, g = 1.0, b = 1.0;
     x = 0.0, y = 0.0, z = 0.75;
     v[0] = v[1] = 0, v[2] = 1;
+    radius = 0.0625;
+}
+
+void PLANE::init() {
+    loc[0][0]=-10.0;
+    loc[0][1]=-10.0;
+    loc[0][2]=0.0;
+    loc[1][0]=10.0;
+    loc[1][1]=-10.0;
+    loc[1][2]=0.0;
+    loc[2][0]=10.0;
+    loc[2][1]=10.0;
+    loc[2][2]=0.0;
+    loc[3][0]=-10.0;
+    loc[3][1]=10.0;
+    loc[3][2]=0.0;
+    u_norm[0]=0.0;
+    u_norm[1]=0.0;
+    u_norm[2]=1.0;
+    area=400;
+    r=0.0;
+    g=1.0;
+    b=0.0;
+    alpha=0.5;
+    x=0.0;
+    y=0.0;
+    z=0.0;
+}
+
+void PLANE::collapse(BALL &rhs)
+{
+    double loc_d=dot(x-rhs.x,   y-rhs.y,   z-rhs.z,    /* ball_center -> plane_center */
+                     u_norm[0], u_norm[1], u_norm[2]); // |plane's u_norm|==1
+    double pjlen=loc_d<0? -loc_d : loc_d;
+    if(pjlen < rhs.radius)
+    {
+        double vd=dot(rhs.v[0],  rhs.v[1],  rhs.v[2],    /* ball_v */
+                       u_norm[0], u_norm[1], u_norm[2]); // |plane's u_norm|==1
+        for(int i=0;i<3;++i)
+            rhs.v[i]-=2*vd*u_norm[i];
+    }
 }
