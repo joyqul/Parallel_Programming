@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <cstdlib> // standard definitions
 #include <cmath> // math definitions
 #include <cstdio> // standard I/O
@@ -45,6 +46,28 @@ void changeSize(int w, int h) {
     glViewport(0, 0, w, h); // set viewport (drawing area) to entire window
 }
 
+void collision(int a, int b) {
+    double dis_vec[3] = { ball[b].x-ball[a].x, ball[b].y-ball[a].y, ball[b].z-ball[a].z };
+    double dis = dis_vec[0]*dis_vec[0] + dis_vec[1]*dis_vec[1] + dis_vec[2]*dis_vec[2];
+    double a_len = sqrt(ball[a].x*ball[a].x + ball[a].y*ball[a].y + ball[a].z*ball[a].z);
+    double b_len = sqrt(ball[b].x*ball[b].x + ball[b].y*ball[b].y + ball[b].z*ball[b].z);
+
+    // if no collision
+    if ( dis > (ball[a].radius + ball[b].radius)*(ball[a].radius + ball[b].radius) ) return;
+
+    double a_cos_thita = (ball[a].x*dis_vec[0] + ball[a].y*dis_vec[1] + ball[a].z*dis_vec[2]) / sqrt(dis) / a_len;
+    double b_cos_thita = -(ball[b].x*dis_vec[0] + ball[b].y*dis_vec[1] + ball[b].z*dis_vec[2]) / sqrt(dis) / b_len;
+
+    double a_normal_vec[3] = { ball[a].v[0]*a_cos_thita, ball[a].v[1]*a_cos_thita, ball[a].v[2]*a_cos_thita };
+    double b_normal_vec[3] = { ball[b].v[0]*b_cos_thita, ball[b].v[1]*b_cos_thita, ball[b].v[2]*b_cos_thita };
+
+    for (int i = 0; i < 3; ++i) {
+        ball[a].v[i] = ball[a].v[i] - a_normal_vec[i] + b_normal_vec[i];
+        ball[b].v[i] = ball[b].v[i] - b_normal_vec[i] + a_normal_vec[i];
+    }
+
+}
+
 float balldx = -0.003;
 float balldy = -0.003;
 float balldz = -0.003;
@@ -60,6 +83,13 @@ void moveBall() {
         ball[i].x += ball[i].v[0];
         ball[i].y += ball[i].v[1];
         ball[i].z += ball[i].v[2];
+    }
+
+    // collision
+    for (int i = 0; i < ball.size(); ++i) {
+        for (int j = i + 1; j < ball.size(); ++j) {
+            collision(i, j);
+        }
     }
 }
 
@@ -156,7 +186,6 @@ void renderScene(void) {
     drawBall();
     drawGround();
     drawCylinder();
-
 
     glutSwapBuffers(); // Make it all visible
 }
