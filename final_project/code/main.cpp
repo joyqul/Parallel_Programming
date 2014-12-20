@@ -3,14 +3,16 @@
 #include <cmath> // math definitions
 #include <cstdio> // standard I/O
 #include <vector>
-#include "scene.cpp"
+#include "scene.h"
 
 // include files are in a slightly different location for MacOS
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
-#include <windows.h>
 #include <GL/glut.h>
+#endif
+#ifdef _WIN32
+#include <windows.h>
 #endif
 
 // escape key (for exit)
@@ -42,9 +44,10 @@ void changeSize(int w, int h) {
     glMatrixMode(GL_MODELVIEW); // return to modelview mode
     glViewport(0, 0, w, h); // set viewport (drawing area) to entire window
 }
-float balldx=-0.003;
-float balldy=-0.003;
-float balldz=-0.003;
+
+float balldx = -0.003;
+float balldy = -0.003;
+float balldz = -0.003;
 void moveBall() {
     for(int j=0; j < plane.size(); ++j) // plane
     {
@@ -100,6 +103,7 @@ void drawGround()
 
 	glEnd();
 }
+
 GLUquadricObj *quadratic;
 float cylinx=0.0;
 void drawCylinder()
@@ -128,6 +132,7 @@ void update(void) {
     }
     glutPostRedisplay(); // redisplay everything
 }
+
 float up_dx=0.0;
 float up_dy=0.0;
 float up_dz=1.0;

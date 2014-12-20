@@ -19,6 +19,7 @@ public:
     void TurnDown(float, float, float, float);
     float eye[3], vat[3], vup[3], fovy, dnear, dfar, viewport[4];
 };
+
 class BALL {
 public:
     void init();
@@ -27,6 +28,7 @@ public:
     double v[3];
     double radius;
 };
+
 class PLANE
 {
 public:
