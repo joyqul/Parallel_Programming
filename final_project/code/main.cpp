@@ -1,25 +1,23 @@
 #include <iostream>
-#include <algorithm>
 #include <cstdlib> // standard definitions
 #include <cmath> // math definitions
 #include <cstdio> // standard I/O
 #include <vector>
-#include "scene.h"
+#include "scene.cpp"
 
 // include files are in a slightly different location for MacOS
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
-#include <GL/glut.h>
-#endif
-#ifdef _WIN32
 #include <windows.h>
+#include <GL/glut.h>
 #endif
 
 // escape key (for exit)
 #define ESC 27
 
 // Camera position
+bool pause=false;
 float x = 0.0, y = -16.0; // initially 16 units south of origin
 float deltaMove = 0.0; // initially camera doesn't move
 float deltaLRshift=0.0;
@@ -36,6 +34,7 @@ int xDragStart = 0; // records the x-coordinate when dragging starts
 // Balls
 std::vector<BALL> ball;
 std::vector<PLANE> plane;
+std::vector<CYLINDER> cylinder;
 
 void changeSize(int w, int h) {
     float ratio =  ((float) w) / ((float) h); // window aspect ratio
@@ -45,33 +44,26 @@ void changeSize(int w, int h) {
     glMatrixMode(GL_MODELVIEW); // return to modelview mode
     glViewport(0, 0, w, h); // set viewport (drawing area) to entire window
 }
-
-void collision(int a, int b) {
-    double dis_vec[3] = { ball[b].x-ball[a].x, ball[b].y-ball[a].y, ball[b].z-ball[a].z };
-    double dis = dis_vec[0]*dis_vec[0] + dis_vec[1]*dis_vec[1] + dis_vec[2]*dis_vec[2];
-    double a_len = sqrt(ball[a].x*ball[a].x + ball[a].y*ball[a].y + ball[a].z*ball[a].z);
-    double b_len = sqrt(ball[b].x*ball[b].x + ball[b].y*ball[b].y + ball[b].z*ball[b].z);
-
-    // if no collision
-    if ( dis > (ball[a].radius + ball[b].radius)*(ball[a].radius + ball[b].radius) ) return;
-
-    double a_cos_thita = (ball[a].x*dis_vec[0] + ball[a].y*dis_vec[1] + ball[a].z*dis_vec[2]) / sqrt(dis) / a_len;
-    double b_cos_thita = -(ball[b].x*dis_vec[0] + ball[b].y*dis_vec[1] + ball[b].z*dis_vec[2]) / sqrt(dis) / b_len;
-
-    double a_normal_vec[3] = { ball[a].v[0]*a_cos_thita, ball[a].v[1]*a_cos_thita, ball[a].v[2]*a_cos_thita };
-    double b_normal_vec[3] = { ball[b].v[0]*b_cos_thita, ball[b].v[1]*b_cos_thita, ball[b].v[2]*b_cos_thita };
-
-    for (int i = 0; i < 3; ++i) {
-        ball[a].v[i] = ball[a].v[i] - a_normal_vec[i] + b_normal_vec[i];
-        ball[b].v[i] = ball[b].v[i] - b_normal_vec[i] + a_normal_vec[i];
-    }
-
-}
-
-float balldx = -0.003;
-float balldy = -0.003;
-float balldz = -0.003;
+float balldx=-0.003;
+float balldy=-0.003;
+float balldz=-0.003;
 void moveBall() {
+    if(pause)
+        return;
+    // ball-ball collapse
+    for(int j=0;j<ball.size();++j)
+        ball[j].wirte_tmp_v();
+    // sync
+    for(int j=0;j<ball.size();++j)
+    {
+        ball[j].detectBalls(j,ball);
+    }
+    // sync
+    for(int j=0;j<ball.size();++j)
+        ball[j].update_speed();
+    // sync
+
+    // plane-ball collapse
     for(int j=0; j < plane.size(); ++j) // plane
     {
         for(int i=0; i < ball.size(); ++i) // ball
@@ -79,17 +71,20 @@ void moveBall() {
             plane[j].collapse(ball[i]);
         }
     }
+
+    for(int j=0; j < cylinder.size(); ++j)
+    {
+        for(int i=0; i < ball.size(); ++i) // ball
+        {
+            cylinder[j].collapse(ball[i]);
+        }
+    }
+
+    // ball move
     for (int i = 0; i < ball.size(); ++i) {
         ball[i].x += ball[i].v[0];
         ball[i].y += ball[i].v[1];
         ball[i].z += ball[i].v[2];
-    }
-
-    // collision
-    for (int i = 0; i < ball.size(); ++i) {
-        for (int j = i + 1; j < ball.size(); ++j) {
-            collision(i, j);
-        }
     }
 }
 
@@ -133,20 +128,24 @@ void drawGround()
 
 	glEnd();
 }
-
 GLUquadricObj *quadratic;
-float cylinx=0.0;
 void drawCylinder()
 {
+    if(!cylinder.size())
+    {
+        CYLINDER tmp;
+        tmp.init();
+        cylinder.push_back(tmp);
+    }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
-    glColor4f(1,1,0,0.5); // set drawing color
-    glTranslatef(0,1,0); // location
+    glColor4f(cylinder[0].r,cylinder[0].g,cylinder[0].b,cylinder[0].alpha); // set drawing color
+    glTranslatef(cylinder[0].bx,cylinder[0].by,cylinder[0].bz); // location
 
     quadratic = gluNewQuadric();
     //glRotatef(0.0, 0.0, 1.0, 0.0);
-    gluCylinder(quadratic,2,1,4.0,32,32); // GLUquadricObj*, baseR, topR, height,
+    gluCylinder(quadratic,cylinder[0].radius,cylinder[0].radius,cylinder[0].height,32,32); // GLUquadricObj*, baseR, topR, height,
 }
 
 void update(void) {
@@ -162,7 +161,6 @@ void update(void) {
     }
     glutPostRedisplay(); // redisplay everything
 }
-
 float up_dx=0.0;
 float up_dy=0.0;
 float up_dz=1.0;
@@ -183,9 +181,10 @@ void renderScene(void) {
                up_dx ,  up_dy, up_dz);
 
     moveBall();
-    drawBall();
     drawGround();
+    drawBall();
     drawCylinder();
+
 
     glutSwapBuffers(); // Make it all visible
 }
@@ -193,6 +192,10 @@ void renderScene(void) {
 
 void processNormalKeys(unsigned char key, int xx, int yy) {
     if (key == ESC || key == 'q' || key == 'Q') exit(0);
+    if(key == 'p')
+    {
+        pause=!pause;
+    }
     if (key == 'a') {
         BALL tmp;
         tmp.init();
@@ -204,102 +207,118 @@ void processNormalKeys(unsigned char key, int xx, int yy) {
     if(key=='x')
     {
         balldx-=0.001;
-        printf("dx: %f\n",balldx);
+        printf("dx: %f\t\n",balldx);
     }
     if(key=='c')
     {
         balldy-=0.001;
-        printf("dy: %f\n",balldy);
+        printf("dy: %f\t\n",balldy);
     }
     if(key=='v')
     {
         balldz-=0.001;
-        printf("dz: %f\n",balldz);
+        printf("dz: %f\t\n",balldz);
     }
     if(key=='s')
     {
         balldx+=0.001;
-        printf("dx: %f\n",balldx);
+        printf("dx: %f\t\n",balldx);
     }
     if(key=='d')
     {
         balldy+=0.001;
-        printf("dy: %f\n",balldy);
+        printf("dy: %f\t\n",balldy);
     }
     if(key=='f')
     {
         balldz+=0.001;
-        printf("dz: %f\n",balldz);
+        printf("dz: %f\t\n",balldz);
     }
     if(key=='g')
     {
         lx+=0.125;
-        printf("lx: %f\n",lx);
+        printf("lx: %f\t\n",lx);
     }
     if(key=='b')
     {
         lx-=0.125;
-        printf("lx: %f\n",lx);
+        printf("lx: %f\t\n",lx);
     }
     if(key=='h')
     {
         ly+=0.125;
-        printf("ly: %f\n",ly);
+        printf("ly: %f\t\n",ly);
     }
     if(key=='n')
     {
         ly-=0.125;
-        printf("ly: %f\n",ly);
+        printf("ly: %f\t\n",ly);
     }
     if(key=='j')
     {
         x+=0.125;
-        printf("x: %f\n",x);
+        printf("x: %f\t\n",x);
     }
     if(key=='m')
     {
         x-=0.125;
-        printf("x: %f\n",x);
+        printf("x: %f\t\n",x);
     }
     if(key=='k')
     {
         y+=0.125;
-        printf("y: %f\n",y);
+        printf("y: %f\t\n",y);
     }
     if(key==',')
     {
         y-=0.125;
-        printf("y: %f\n",y);
+        printf("y: %f\t\n",y);
     }
     if(key=='X')
     {
         up_dx-=0.125;
-        printf("up_dx: %f\n",up_dx);
+        printf("up_dx: %f\t\n",up_dx);
     }
     if(key=='C')
     {
         up_dy-=0.125;
-        printf("up_dy: %f\n",up_dy);
+        printf("up_dy: %f\t\n",up_dy);
     }
     if(key=='V')
     {
         up_dz-=0.125;
-        printf("up_dz: %f\n",up_dz);
+        printf("up_dz: %f\t\n",up_dz);
     }
     if(key=='S')
     {
         up_dx+=0.125;
-        printf("up_dx: %f\n",up_dx);
+        printf("up_dx: %f\t\n",up_dx);
     }
     if(key=='D')
     {
         up_dy+=0.125;
-        printf("up_dy: %f\n",up_dy);
+        printf("up_dy: %f\t\n",up_dy);
     }
     if(key=='F')
     {
         up_dz+=0.125;
-        printf("up_dz: %f\n",up_dz);
+        printf("up_dz: %f\t\n",up_dz);
+    }
+    if(key=='i')
+    {
+        printf("ball: %d\n",ball.size());
+        if(ball.size())
+        {
+            double p[3]={0.0,0.0,0.0};
+            for(int i=0;i<ball.size();++i)
+            {
+                for(int j=0;j<3;++j)
+                {
+                    p[j]+=ball[i].v[j];
+                }
+            }
+            printf("P: %f %f %f\t\n",p[0],p[1],p[2]);
+        }
     }
 }
 
