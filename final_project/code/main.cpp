@@ -3,13 +3,12 @@
 #include <cmath> // math definitions
 #include <cstdio> // standard I/O
 #include <vector>
-#include "scene.cpp"
+#include "scene.h"
 
 // include files are in a slightly different location for MacOS
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
-#include <windows.h>
 #include <GL/glut.h>
 #endif
 
