@@ -203,6 +203,16 @@ void processNormalKeys(unsigned char key, int xx, int yy) {
         tmp.v[2]=balldz;
         ball.push_back(tmp);
     }
+    if (key == 'A') {
+        for (int i = 0; i < 1000; ++i) {
+            BALL tmp;
+            tmp.init();
+            tmp.v[0]=balldx + 0.0001*i;
+            tmp.v[1]=balldy + 0.0001*i;
+            tmp.v[2]=balldz + 0.0001*i;
+            ball.push_back(tmp);
+        }
+    }
     if(key=='x')
     {
         balldx-=0.001;
