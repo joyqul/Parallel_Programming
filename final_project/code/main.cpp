@@ -14,6 +14,7 @@
 
 // escape key (for exit)
 #define ESC 27
+#define max_ball 10000
 
 // Camera position
 bool pause=false;
@@ -207,10 +208,11 @@ void processNormalKeys(unsigned char key, int xx, int yy) {
         for (int i = 0; i < 1000; ++i) {
             BALL tmp;
             tmp.init();
-            tmp.v[0]=balldx + 0.0001*i;
-            tmp.v[1]=balldy + 0.0001*i;
-            tmp.v[2]=balldz + 0.0001*i;
+            tmp.v[0]=balldx;
+            tmp.v[1]=balldy;
+            tmp.v[2]=balldz;
             ball.push_back(tmp);
+            ball[i].z+=2.0*i/max_ball;
         }
     }
     if(key=='x')
